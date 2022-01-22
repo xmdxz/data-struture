@@ -1,5 +1,6 @@
 package com.struture.tree.application;
 
+import java.io.*;
 import java.util.*;
 
 /**
@@ -11,23 +12,78 @@ import java.util.*;
 public class HuffmanCode {
 
     public static void main(String[] args) {
-        String origin = "i like like like java do you like a java";
+        String origin = "i lijmghjhjk do you like a java";
         Encode encode = encode(origin);
-        System.out.println(decode(encode));
+        System.out.println(decodeToString(encode));
+        String originPath = "D:\\Users\\xpdxz\\Desktop\\测控2004班书单(2).xlsx";
+        String originPath2 = "D:\\Users\\xpdxz\\Desktop\\测控2004班书单(1).xlsx";
+        String toPath = "D:\\Users\\xpdxz\\Desktop\\1.zip";
+        zip(originPath, toPath);
+        unZip(toPath, originPath2);
     }
+
+    //========================================霍夫曼文件压缩==================================
+
+
+    public static boolean unZip(String originPath, String toPath) {
+        try (
+                InputStream inputStream = new FileInputStream(originPath);
+                OutputStream outputStream = new FileOutputStream(toPath);
+                ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
+        ) {
+            Object o = objectInputStream.readObject();
+            if (!(o instanceof Encode)) {
+                return false;
+            } else {
+                byte[] bytes = decode((Encode) o);
+                outputStream.write(bytes);
+                outputStream.flush();
+            }
+            return true;
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static boolean zip(String originPath, String toPath) {
+        try (
+                InputStream inputStream = new FileInputStream(originPath);
+                OutputStream outputStream = new FileOutputStream(toPath);
+                ObjectOutputStream obj = new ObjectOutputStream(outputStream)
+        ) {
+            byte[] origin = new byte[inputStream.available()];
+            int read = inputStream.read(origin);
+            if (read == -1) {
+                return false;
+            }
+            Encode encode = encode(origin);
+            obj.writeObject(encode);
+            obj.flush();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 
     //========================================霍夫曼编码的decode==============================
 
-    public static String decode(Encode encode) {
-        Map<String, Byte> instead = new HashMap<>(16);
-        encode.huffmanCode.forEach((k, v) -> instead.put(v, k));
-        String binaryString = byteToString(encode.result);
-        byte[] decode = binaryStringToOrigin(binaryString, instead);
+    public static String decodeToString(Encode encode) {
+        byte[] decode = decode(encode);
         StringBuilder stringBuilder = new StringBuilder();
         for (byte b : decode) {
             stringBuilder.append((char) b);
         }
         return stringBuilder.toString();
+    }
+
+    public static byte[] decode(Encode encode) {
+        Map<String, Byte> instead = new HashMap<>(16);
+        encode.huffmanCode.forEach((k, v) -> instead.put(v, k));
+        String binaryString = byteToString(encode.result);
+        return binaryStringToOrigin(binaryString, instead);
     }
 
     private static byte[] binaryStringToOrigin(String result, Map<String, Byte> huffmanCode) {
@@ -73,6 +129,13 @@ public class HuffmanCode {
 
     public static Encode encode(String origin) {
         byte[] bytes = origin.getBytes();
+        Node root = initializeHuffmanTree(bytes);
+        Map<Byte, String> huffmanCode = getHuffmanCode(root);
+        String binaryString = encodeToBinaryString(huffmanCode, bytes);
+        return new Encode(binaryStringToBytes(binaryString), huffmanCode);
+    }
+
+    public static Encode encode(byte[] bytes) {
         Node root = initializeHuffmanTree(bytes);
         Map<Byte, String> huffmanCode = getHuffmanCode(root);
         String binaryString = encodeToBinaryString(huffmanCode, bytes);
@@ -158,6 +221,8 @@ public class HuffmanCode {
         return result;
     }
 
+    //==============================================遍历============================================
+
     private static void hierarchicalTraversal(Node root) {
         if (root == null) {
             System.out.println("二叉树为空");
@@ -184,7 +249,9 @@ public class HuffmanCode {
         }
     }
 
-    private static class Encode {
+    //=======================================内部类，只供内部使用=================================
+
+    private static class Encode implements Serializable {
         private byte[] result;
         private Map<Byte, String> huffmanCode;
 
